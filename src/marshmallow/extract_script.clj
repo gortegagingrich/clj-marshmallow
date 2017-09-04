@@ -1,6 +1,7 @@
-(ns marshmallow.parse-script)
-(require '[clojure.xml :as xml]
-         '[clojure.zip :as zip])
+(ns marshmallow.extract-script
+  (:require
+    [clojure.xml :as xml]
+    [clojure.zip :as zip]))
 
 (defn get-attr
   "returns given attribute"
@@ -145,4 +146,28 @@
   (unique-speakers-rec
     (get-unique-names
       (get-spoken msg))))
+
+(defn extract
+  [files]
+  (doseq [file files]
+    (try
+      (let [msg (get-messages file)]
+        (with-open
+          [w (clojure.java.io/writer (str "tl/" (.getName file) ".txt"))]
+          (doseq
+            [line
+             (cons
+               (format
+                 "// line count: %d\n// char count: %d\n\n// speakers\n%s\n// text\n"
+                   (count msg)
+                   (count-chars file)
+                   (unique-speakers msg))
+                 (get-lines msg))]
+              (.write w line))))
+        (catch Exception e
+          (println
+            (format
+              "Could not read file \"%s\": %s"
+              (.getName file)
+              (.toString e)))))))
 

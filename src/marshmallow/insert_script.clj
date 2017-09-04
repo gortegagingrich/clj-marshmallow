@@ -1,7 +1,6 @@
 (ns marshmallow.insert-script
   (:require
     [instaparse.core :as insta]
-    [clojure.zip :as zip]
     [clojure.xml :as xml]))
 
 (def tl-file
@@ -167,7 +166,7 @@
     (print-xml s-xml tree w)))
 
 (defn batch-insert
-  []
+  [files]
   (let
     [lm (read-string
           (slurp "lastmodified.dat"))
@@ -176,9 +175,7 @@
           #(>=
              (.lastModified %)
              lm)
-          (next
-            (file-seq
-              (clojure.java.io/file "tl/"))))
+          files)
      f-size (count fs)]
     (doseq
       [f fs]
