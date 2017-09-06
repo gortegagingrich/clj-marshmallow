@@ -66,8 +66,8 @@
     n
     0))
 
-(defn print-attr
-  [attr w]
+(defn write-attr
+  [w attr]
   (try
     (.write
       w
@@ -84,76 +84,71 @@
           (second attr))))
     (catch Exception e)))
 
+(declare print-xml)
+
+(defn write-element
+  [w tree tag content]
+  (.write
+    w
+    (format "<%s>\n" tag))
+  (doseq
+    [child content]
+    (print-xml child tree w))
+  (.write
+    w
+    (format "</%s>\n" tag)))
+
+(defn write-element-empty
+  [w tree tag attrs]
+  (when
+    (not-empty tag)
+    (.write
+      w
+      (format
+        "\t\t<%s"
+        (subs tag 1)))
+    (doseq
+      [attr attrs]
+      (case
+        (first attr)
+        :name (.write
+                w
+                (format
+                  " name=\"%s\""
+                  (get-name
+                    tree
+                    (second attr))))
+        :text (.write
+                w
+                (format
+                  " txt=\"%s\""
+                  (get-line
+                    tree
+                    (second
+                      (last attrs)))))
+        (write-attr w attr)))
+    (.write w "/>\n")))
 
 (defn print-xml
   [element tree w]
-  (if
-    (not-empty
-      (get element :content))
-    (do
-      (.write
+  (let
+    [content (get element :content)]
+    (if
+      (not-empty content)
+      (write-element
         w
-        (format
-          "<%s>\n"
-          (subs
-            (str
-              (get element :tag))
-            1)))
-      (print-xml
-        (doseq
-          [child (get element :content)]
-          (print-xml child tree w))
         tree
-        w)
-      (.write
+        (subs
+          (str
+            (get element :tag))
+          1)
+        content)
+      (write-element-empty
         w
-        (format
-          "</%s>\n"
-          (subs
-            (str
-              (get element :tag))
-            1))))
-    (let
-      [len (count
-             (str
-               (get element :tag)))]
-      (when
-        (> len 0)
-        (.write
-          w
-          (format
-            "\t\t<%s"
-            (subs
-              (str
-                (get element :tag))
-              1)))
-        (doseq
-          [attr (get element :attrs)]
-          (case
-            (first attr)
-            :name (.write
-                    w
-                    (format
-                      " name=\"%s\""
-                      (let
-                        [n (get-name
-                             tree
-                             (second attr))]
-                        (if
-                          (empty? n)
-                          ""
-                          n))))
-            :text (.write
-                    w
-                    (format
-                      " text=\"%s\""
-                      (get-line
-                        tree
-                        (second
-                          (last
-                            (get element :attrs))))))
-            (print-attr attr w)))
-        (.write w "/>\n")))))
+        tree
+        (str
+          (get element :tag))
+        (get element :attrs)))))
 
 (defn to-xml-script
   [tl script w]
@@ -162,7 +157,7 @@
      tree (tl-file
             (slurp tl))]
 
-    (.write w "<?xml version=\"1.0\" encoding=\"utf-8\"?>")
+    (.write w "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n")
     (print-xml s-xml tree w)))
 
 (defn batch-insert
@@ -191,10 +186,10 @@
         [w (clojure.java.io/writer
              (format
                "out/%s"
-                 (clojure.string/replace
-                   (.getName f)
-                   #".txt"
-                   "")))]
+               (clojure.string/replace
+                 (.getName f)
+                 #".txt"
+                 "")))]
         (let
           [tl (format
                 "tl/%s"
@@ -208,3 +203,16 @@
           (to-xml-script tl scr w)))
       (spit "lastmodified.dat" new-lm)
       (println " ... done"))))
+
+(def test-tree
+  (xml/parse "scripts/花音_01.srcxml"))
+
+(def tl-tree
+  (tl-file (slurp "tl/花音_01.srcxml.txt")))
+
+test-tree
+
+tl-tree
+
+(get-line tl-tree "test")
+
